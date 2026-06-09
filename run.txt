@@ -1,2 +1,1 @@
-AI_DEVICE=gpu docker compose -f docker-compose.cuda.yaml build &&
-AI_DEVICE=gpu docker compose -f docker-compose.cuda.yaml up
+AI_DEVICE=gpu docker compose -f docker-compose.cuda.yaml build && AI_DEVICE=gpu docker compose -f docker-compose.cuda.yaml up
