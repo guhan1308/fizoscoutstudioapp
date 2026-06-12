@@ -92,23 +92,34 @@ class ImagesFolderStream(VideoStream):
                 self.files.remove(path)
 
     def get_data(self) -> StreamData | None:
-        try:
+        with self.files_lock:
+            if not self.files:
+                reloaded = sorted(
+                    [
+                        os.path.join(self.folder_path, f)
+                        for f in os.listdir(self.folder_path)
+                        if os.path.isfile(os.path.join(self.folder_path, f))
+                    ],
+                    key=os.path.getmtime,
+                )
+                if not reloaded:
+                    return None
+                self.files = reloaded
+                logger.debug(f"ImagesFolderStream looping: reloaded {len(self.files)} files")
             file = self.files.pop(0)
-            image = cv2.imread(file)
-            if image is None:
-                # Image cannot be loaded
-                return None
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-            return StreamData(
-                frame_data=image,
-                timestamp=os.path.getmtime(file),
-                source_metadata={
-                    "source_type": SourceType.IMAGES_FOLDER.value,
-                    "folder_path": self.folder_path,
-                },
-            )
-        except IndexError:
+
+        image = cv2.imread(file)
+        if image is None:
             return None
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        return StreamData(
+            frame_data=image,
+            timestamp=os.path.getmtime(file),
+            source_metadata={
+                "source_type": SourceType.IMAGES_FOLDER.value,
+                "folder_path": self.folder_path,
+            },
+        )
 
     def is_real_time(self) -> bool:
         return False

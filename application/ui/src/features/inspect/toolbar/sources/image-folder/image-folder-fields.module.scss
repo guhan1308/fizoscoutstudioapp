@@ -13,3 +13,18 @@
         background-color: var(--spectrum-accent-background-color-hover);
     }
 }
+
+.uploadLabel {
+    font-size: var(--spectrum-global-dimension-font-size-75);
+    color: var(--spectrum-alias-label-text-color);
+}
+
+.uploadedInfo {
+    font-size: var(--spectrum-global-dimension-font-size-75);
+    color: var(--spectrum-semantic-positive-color-icon);
+}
+
+.uploadHint {
+    font-size: var(--spectrum-global-dimension-font-size-75);
+    color: var(--spectrum-alias-text-color-disabled);
+}

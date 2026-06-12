@@ -29,6 +29,7 @@ class FileType(StrEnum):
     SNAPSHOTS = "snapshots"
     MODEL_EXPORTS = "model_exports"
     VIDEOS = "videos"
+    SOURCE_IMAGES = "source_images"
 
 
 class BinaryRepository(metaclass=abc.ABCMeta):
@@ -168,6 +169,28 @@ class VideoBinaryRepository(BinaryRepository):
 
     def __init__(self, project_id: str | ShortUUID):
         super().__init__(project_id=project_id, file_type=FileType.VIDEOS)
+
+    def get_full_path(self, filename: str) -> str:
+        return os.path.join(self.project_folder_path, filename)
+
+
+class SourceImagesBinaryRepository(BinaryRepository):
+    """Binary repository for storing images uploaded as pipeline source input.
+
+    When ``session_id`` is provided files are stored under
+    ``source_images/projects/{project_id}/{session_id}/`` so that each upload
+    call gets its own isolated folder.  Without a ``session_id`` the flat
+    project folder is used (legacy / testing only).
+    """
+
+    def __init__(self, project_id: str | ShortUUID, session_id: str | ShortUUID | None = None):
+        super().__init__(project_id=project_id, file_type=FileType.SOURCE_IMAGES)
+        self._session_id = str(session_id) if session_id else None
+
+    @cached_property
+    def project_folder_path(self) -> str:
+        base = os.path.join(settings.data_dir, self.file_type, "projects", self.project_id)
+        return os.path.join(base, self._session_id) if self._session_id else base
 
     def get_full_path(self, filename: str) -> str:
         return os.path.join(self.project_folder_path, filename)

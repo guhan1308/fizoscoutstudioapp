@@ -3,17 +3,27 @@
 
 """Endpoints for managing pipeline sources"""
 
-from typing import Annotated
+import asyncio
+import os
+from typing import Annotated, List
 
 import yaml
-from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
-from fastapi.exceptions import HTTPException
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.openapi.models import Example
 from fastapi.responses import FileResponse, Response
+from loguru import logger
 
 from api.dependencies import PaginationLimit, get_configuration_service, get_project_id, get_source_id
+from api.media_rest_validator import MediaRestValidator
 from pydantic_models import Source, SourceType
-from pydantic_models.source import SourceAdapter, SourceCreate, SourceCreateAdapter, SourceList
+from pydantic_models.source import (
+    SourceAdapter,
+    SourceCreate,
+    SourceCreateAdapter,
+    SourceImagesUploadResponse,
+    SourceList,
+)
+from repositories.binary_repo import SourceImagesBinaryRepository
 from services import ConfigurationService, ResourceAlreadyExistsError, ResourceInUseError, ResourceNotFoundError
 from utils.short_uuid import ShortUUID
 
@@ -289,3 +299,63 @@ async def delete_source(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ResourceInUseError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+
+@router.post(
+    ":upload-images",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_201_CREATED: {
+            "description": "Images uploaded successfully; returns the server folder path to use as images_folder_path",
+            "model": SourceImagesUploadResponse,
+        },
+        status.HTTP_400_BAD_REQUEST: {"description": "One or more files are not valid images"},
+    },
+)
+async def upload_source_images(
+    project_id: Annotated[ShortUUID, Depends(get_project_id)],
+    files: Annotated[List[UploadFile], File(description="One or more image files to upload as a source image set")],
+) -> SourceImagesUploadResponse:
+    """Upload a batch of images that will be used as an images-folder pipeline source.
+
+    Each call creates a fresh, isolated subfolder identified by a generated
+    session ID so that successive uploads never mix images from different sets.
+    The returned ``folder_path`` should be supplied as ``images_folder_path``
+    when creating an ``images_folder`` source.
+    """
+    session_id = ShortUUID.generate()
+    bin_repo = SourceImagesBinaryRepository(project_id=project_id, session_id=session_id)
+
+    saved_count = 0
+    for upload in files:
+        # Validate extension using the shared validator list
+        if upload.filename is None or "." not in upload.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File '{upload.filename}' has no extension. Only image files are accepted.",
+            )
+        ext = os.path.splitext(upload.filename)[-1].lower()
+        if ext not in MediaRestValidator.SUPPORTED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"'{upload.filename}' is not a supported image type ({ext}). "
+                    f"Allowed types: {MediaRestValidator.SUPPORTED_IMAGE_TYPES}"
+                ),
+            )
+
+        content = await upload.read()
+        filename = upload.filename
+
+        try:
+            saved_path = await bin_repo.save_file(filename=filename, content=content)
+            logger.info(f"Saved source image: {saved_path}")
+            saved_count += 1
+        except OSError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save '{filename}': {exc}",
+            ) from exc
+
+    folder_path = await asyncio.to_thread(lambda: str(bin_repo.project_folder_path))
+    return SourceImagesUploadResponse(folder_path=folder_path, image_count=saved_count)

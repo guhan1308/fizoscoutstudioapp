@@ -168,3 +168,10 @@ SourceCreate = Annotated[
 ]
 
 SourceCreateAdapter: TypeAdapter[SourceCreate] = TypeAdapter(SourceCreate)
+
+
+class SourceImagesUploadResponse(BaseModel):
+    """Response returned after uploading a batch of images for an images-folder source."""
+
+    folder_path: str
+    image_count: int

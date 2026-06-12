@@ -16,21 +16,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
-## [v2.5.0] - 2026-05-28
-
-### Added
-
-- 🚀 **model**: Add INP-Former model by @abc-125 and @alexriedel1 in https://github.com/open-edge-platform/anomalib/pull/3605
-- 🚀 **model**: Add GLASS anomaly detection model by @code-dev05 in https://github.com/open-edge-platform/anomalib/pull/2629
-- 🚀 **model**: Add AnomalyVFM zero-shot anomaly detection model by @MaticFuc in https://github.com/open-edge-platform/anomalib/pull/3559
-- 🚀 **model**: Add CFM (Cross-modal Feature Mapping) model by @Collics in https://github.com/open-edge-platform/anomalib/pull/3588
-
-## [v2.4.2] - 2026-05-15
-
-### Added
-
-- 🚀 **model**: Half precision training for Dinomaly by @alexriedel1 in https://github.com/open-edge-platform/anomalib/pull/3593
-
 ## [v2.4.1] - 2026-05-01
 
 ### Fixed
